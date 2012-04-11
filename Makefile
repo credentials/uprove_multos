@@ -15,14 +15,17 @@ SIMULATOR=$(BINDIR)/uprove.simulator.hzx
 
 all: simulator smartcard
 
+$(BINDIR):
+	mkdir $(BINDIR)
+
 simulator: $(HEADERS) $(SOURCES) $(SIMULATOR)
 
-$(SIMULATOR): $(HEADERS) $(SOURCES)
+$(SIMULATOR): $(HEADERS) $(SOURCES) $(BINDIR)
 	hcl $(SIMFLAGS) $(SOURCES) -o $(SIMULATOR)
 
 smartcard: $(HEADERS) $(SOURCES) $(SMARTCARD)
 
-$(SMARTCARD): $(HEADERS) $(SOURCES)
+$(SMARTCARD): $(HEADERS) $(SOURCES) $(BINDIR)
 	hcl $(CARDFLAGS) $(SOURCES) -o $(SMARTCARD)
 
 clean:

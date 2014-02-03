@@ -1,19 +1,21 @@
 BINDIR=bin
 INCDIR=include
 SRCDIR=src
-TESTDIR=test
 
-FLAGS=-ansi
-CARDFLAGS=$(FLAGS) -I$(INCDIR)
-SIMFLAGS=$(FLAGS) -g -I$(INCDIR) -DSIMULATOR -DTEST
+PLATFORM=ML3
+FLAGS=-ansi -O -I$(INCDIR) -D${PLATFORM} -DRSA_VERIFY
+CARDFLAGS=$(FLAGS) -Falu
+SIMFLAGS=$(FLAGS) -g -DSIMULATOR -DTEST
 
 HEADERS=$(wildcard $(INCDIR)/*.h)
 SOURCES=$(wildcard $(SRCDIR)/*.c)
 
-SMARTCARD=$(BINDIR)/uprove.smartcard.hzx
-SIMULATOR=$(BINDIR)/uprove.simulator.hzx
+SMARTCARD=$(BINDIR)/uprove.smartcard-${PLATFORM}.hzx
+SIMULATOR=$(BINDIR)/uprove.simulator-${PLATFORM}.hzx
 
 all: simulator smartcard
+
+fresh: clean all
 
 $(BINDIR):
 	mkdir $(BINDIR)
@@ -31,4 +33,4 @@ $(SMARTCARD): $(HEADERS) $(SOURCES) $(BINDIR)
 clean:
 	rm -rf $(BINDIR)/* $(SRCDIR)/*~ $(INCDIR)/*~ $(TESTDIR)/*~
 
-.PHONY: all clean simulator smartcard
+.PHONY: all clean fresh simulator smartcard

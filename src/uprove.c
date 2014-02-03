@@ -31,6 +31,7 @@
 #include "defs_sizes.h"
 #include "defs_types.h"
 #include "funcs_debug.h"
+#include "math.h"
 
 #pragma melpublic
 
@@ -543,8 +544,8 @@ void calcGamma(void) {
    // gamma = g_0 g_1 ^ x_1 ... g_n ^ x_n g_t ^ x_t mod p
    gamma = g_i[0];
    for(i = 1; i < MAX_ATTR + 2; i++) {
-      ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, x_i[i-1].number, p.number, g_i[i].number, t.number);
-      ModularMultiplication(PSIZE_BYTES, gamma.number, t.number, p.number);
+      ModExp(QSIZE_BYTES, PSIZE_BYTES, x_i[i-1].number, p.number, g_i[i].number, t.number);
+      ModMul(PSIZE_BYTES, gamma.number, t.number, p.number);
    }
    debugValue("gamma", gamma.number, PSIZE_BYTES);
 }
@@ -554,8 +555,8 @@ void calcSigmaZ(void) {
    // sigma_z = z_0 z_1 ^ x_1 ... z_n ^ x_n z_t ^ x_t mod p
    sigma_z = z_i[0];
    for(i = 1; i < MAX_ATTR + 2; i++) {
-      ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, x_i[i-1].number, p.number, z_i[i].number, t.number);
-      ModularMultiplication(PSIZE_BYTES, sigma_z.number, t.number, p.number);
+      ModExp(QSIZE_BYTES, PSIZE_BYTES, x_i[i-1].number, p.number, z_i[i].number, t.number);
+      ModMul(PSIZE_BYTES, sigma_z.number, t.number, p.number);
    }
    debugValue("sigma_z", sigma_z.number, PSIZE_BYTES);
 }
@@ -619,27 +620,27 @@ void doPrecomputations(void) {
      generateRandomAlphaBeta();
 
      // h = gamma ^ alpha mod p
-     ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.alpha.number, p.number, gamma.number, h.number);
+     ModExpSecure(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.alpha.number, p.number, gamma.number, h.number);
      debugValue("h", h.number, PSIZE_BYTES);
 
      // sigma_z_prime = sigma_z ^ alpha mod p
-     ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.alpha.number, p.number, sigma_z.number, sigma_z_prime.number);
+     ModExpSecure(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.alpha.number, p.number, sigma_z.number, sigma_z_prime.number);
      debugValue("sigma_z_prime", sigma_z_prime.number, PSIZE_BYTES);
 
      // t_a = g_0 ^ beta1 * g^beta2 mod p
-     ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta1.number, p.number, g_i[0].number, temp_ram.vars.a.number);
-     ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta2.number, p.number, g.number, t.number);
-     ModularMultiplication(PSIZE_BYTES, temp_ram.vars.a.number, t.number, p.number);
+     ModExp(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta1.number, p.number, g_i[0].number, temp_ram.vars.a.number);
+     ModExp(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta2.number, p.number, g.number, t.number);
+     ModMul(PSIZE_BYTES, temp_ram.vars.a.number, t.number, p.number);
      debugValue("t_a", temp_ram.vars.a.number, PSIZE_BYTES);
      
      // t_b = sigma_z_prime ^ beta1 * h ^ beta2 mod p
-     ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta1.number, p.number, sigma_z_prime.number, temp_ram.vars.b.number);
-     ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta2.number, p.number, h.number, t.number);
-     ModularMultiplication(PSIZE_BYTES, temp_ram.vars.b.number, t.number, p.number);
+     ModExp(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta1.number, p.number, sigma_z_prime.number, temp_ram.vars.b.number);
+     ModExp(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.beta2.number, p.number, h.number, t.number);
+     ModMul(PSIZE_BYTES, temp_ram.vars.b.number, t.number, p.number);
      debugValue("t_b", temp_ram.vars.b.number, PSIZE_BYTES);
      
      // Compute alpha ^ -1 mod q <==> alpha ^ (q-2) mod q
-     ModularExponentiation(QSIZE_BYTES, QSIZE_BYTES, q_minus_2.number, q.number, temp_ram.vars.alpha.number, alphaInverse.number);
+     ModExpSecure(QSIZE_BYTES, QSIZE_BYTES, q_minus_2.number, q.number, temp_ram.vars.alpha.number, alphaInverse.number);
      debugValue("alphaInverse", alphaInverse.number, QSIZE_BYTES);
      
 }
@@ -648,7 +649,7 @@ void sigmaACommittment(void) {
     // APDU contains sigma_a
     // sigma_a_prime = t_a * sigma_a mod p
     COPYN(PSIZE_BYTES, sigma_a_prime.number, apdu_data.number_p_size);
-    ModularMultiplication(PSIZE_BYTES, sigma_a_prime.number, temp_ram.vars.a.number, p.number);
+    ModMul(PSIZE_BYTES, sigma_a_prime.number, temp_ram.vars.a.number, p.number);
     debugValue("sigma_a_prime", sigma_a_prime.number, PSIZE_BYTES);
 }
 
@@ -656,12 +657,12 @@ void sigmaBCommittment(void) {
     int offset = 0;
     // APDU contains sigma_b
     // sigma_b_prime = t_b * sigma_a ^ alpha mod p
-    ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.alpha.number, p.number, apdu_data.number_p_size, sigma_b_prime.number);
-    ModularMultiplication(PSIZE_BYTES, sigma_b_prime.number, temp_ram.vars.b.number, p.number);
+    ModExpSecure(QSIZE_BYTES, PSIZE_BYTES, temp_ram.vars.alpha.number, p.number, apdu_data.number_p_size, sigma_b_prime.number);
+    ModMul(PSIZE_BYTES, sigma_b_prime.number, temp_ram.vars.b.number, p.number);
     debugValue("sigma_b_prime", sigma_b_prime.number, PSIZE_BYTES);
 
     // sigma_c_prime = H(h, PI, sigma_z_prime, sigma_a_prime, sigma_b_prime) mod q
-    
+   
 	offset += putNumberIntoArray(PSIZE_BYTES, h.number, tempArray+offset);
 	offset += putNumberIntoArray(PI_length, PI, tempArray+offset);
 	offset += putNumberIntoArray(PSIZE_BYTES, sigma_z_prime.number, tempArray+offset);
@@ -718,22 +719,22 @@ int sigmaRCommittment(int verify) {
 	   tempArray[PSIZE_BYTES - 1] = tempArray[PSIZE_BYTES - 1] - 2;
        // tempArray has p - 2 (for modular inverse)
        COPYN(PSIZE_BYTES, tempArray+PSIZE_BYTES, g_i[0].number);
-       ModularMultiplication(PSIZE_BYTES, tempArray+PSIZE_BYTES, sigma_z_prime.number, p.number);
-       ModularExponentiation(PSIZE_BYTES, PSIZE_BYTES, tempArray, p.number, tempArray + PSIZE_BYTES, t.number);
-       ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, sigma_c_prime.number, p.number, t.number, tempArray+PSIZE_BYTES);
+       ModMul(PSIZE_BYTES, tempArray+PSIZE_BYTES, sigma_z_prime.number, p.number);
+       ModExp(PSIZE_BYTES, PSIZE_BYTES, tempArray, p.number, tempArray + PSIZE_BYTES, t.number);
+       ModExp(QSIZE_BYTES, PSIZE_BYTES, sigma_c_prime.number, p.number, t.number, tempArray+PSIZE_BYTES);
 
        // tempArray[PSIZE_BYTES...] now contains (g_0 * sigma_z_prime)^(-sigma_c_prime) mod p
        
        COPYN(PSIZE_BYTES, t.number, g.number);
-       ModularMultiplication(PSIZE_BYTES, t.number, h.number, p.number);
-       ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, sigma_r_prime.number, p.number, t.number, tempArray);
+       ModMul(PSIZE_BYTES, t.number, h.number, p.number);
+       ModExp(QSIZE_BYTES, PSIZE_BYTES, sigma_r_prime.number, p.number, t.number, tempArray);
        // tempArray[0...] now contains (g * h) ^ sigma_r_prime mod p
 
-       ModularMultiplication(PSIZE_BYTES, tempArray, tempArray+PSIZE_BYTES, p.number);
+       ModMul(PSIZE_BYTES, tempArray, tempArray+PSIZE_BYTES, p.number);
        // tempArray[0...] now contains RHS of signature verification equation
 
        COPYN(PSIZE_BYTES, t.number, sigma_a_prime.number);
-       ModularMultiplication(PSIZE_BYTES, t.number, sigma_b_prime.number, p.number);
+       ModMul(PSIZE_BYTES, t.number, sigma_b_prime.number, p.number);
        // t contains LHS of signature verification equation
 
        if(memcmp(t.number, tempArray, PSIZE_BYTES) == 0) {
@@ -831,11 +832,11 @@ void challengeM(void) {
     int offset = 0;
     generateRandomWi();    
     // Calculate a 
-    ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, w_i[0].number, p.number, h.number, t.number);
+    ModExp(QSIZE_BYTES, PSIZE_BYTES, w_i[0].number, p.number, h.number, t.number);
     for(i = 0; i < MAX_ATTR; i++) {
        if(UD[i]) continue; // i is in D, not interested
-       ModularExponentiation(QSIZE_BYTES, PSIZE_BYTES, w_i[i+1].number, p.number, g_i[i+1].number, temp_ram.vars.a.number);
-       ModularMultiplication(PSIZE_BYTES, t.number, temp_ram.vars.a.number, p.number);
+       ModExp(QSIZE_BYTES, PSIZE_BYTES, w_i[i+1].number, p.number, g_i[i+1].number, temp_ram.vars.a.number);
+       ModMul(PSIZE_BYTES, t.number, temp_ram.vars.a.number, p.number);
     }
     // t now contains h^w_0 * prod i in U g_i^w_i mod p
     offset += putNumberIntoArray(PSIZE_BYTES, t.number, temp_ram.array+offset);
@@ -847,7 +848,7 @@ void challengeM(void) {
 
     // compute r_i i = 0
     COPYN(QSIZE_BYTES+1, t.number_w, c.number_w);
-    ModularMultiplication(QSIZE_BYTES, t.number, alphaInverse.number, q.number);
+    ModMul(QSIZE_BYTES, t.number, alphaInverse.number, q.number);
     ADDN(QSIZE_BYTES + 1, r_i[0].number_w, t.number_w, w_i[0].number_w);
     if(r_i[0].number_w[0]) { r_i[0].number_w[0] = 0; ASSIGN_SUBN(QSIZE_BYTES+1, r_i[0].number_w, q.number_w); r_i[0].number_w[0] = 0; }
     debugValue("r_i", r_i[0].number, QSIZE_BYTES);
@@ -857,7 +858,7 @@ void challengeM(void) {
        if(UD[i]) continue; // i is in D, not interested
        COPYN(QSIZE_BYTES+1, t.number_w, c.number_w);
        COPYN(QSIZE_BYTES+1, w_i[0].number_w, w_i[i+1].number_w);
-       ModularMultiplication(QSIZE_BYTES, t.number, x_i[i].number, q.number);
+       ModMul(QSIZE_BYTES, t.number, x_i[i].number, q.number);
        SUBN(QSIZE_BYTES + 1, temp_ram.array, w_i[0].number_w, t.number_w);
        if(temp_ram.array[0]) { temp_ram.array[0] = 0; ASSIGN_ADDN(QSIZE_BYTES+1, temp_ram.array, q.number_w); temp_ram.array[0] = 0; }
        COPYN(QSIZE_BYTES+1, r_i[i+1].number_w, temp_ram.array);       
